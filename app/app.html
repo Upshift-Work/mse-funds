@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mutual Fund Analysis</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.0/dist/chartjs-adapter-moment.min.js"></script>
+    <script src="output/fund_data.js"></script>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2ecc71;
+            --background-color: #f4f4f4;
+            --text-color: #333;
+            --card-background: #fff;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: var(--primary-color);
+        }
+        .card {
+            background-color: var(--card-background);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .chart-container {
+            margin-bottom: 30px;
+        }
+        .fund-lists-section {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+        .fund-list {
+            width: 30%;
+            margin-bottom: 20px;
+        }
+        .fund-list h3 {
+            margin-bottom: 10px;
+        }
+        .fund-list ol {
+            padding-left: 20px;
+            margin: 0;
+        }
+        .fund-list li {
+            margin-bottom: 5px;
+        }
+        .fund-list .fund-name {
+            cursor: pointer;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .fund-list .fund-name:hover {
+            text-decoration: underline;
+        }
+        .fund-list .return-rate {
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+        #metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        #metrics p {
+            margin: 0;
+            padding: 10px;
+            background-color: #e8e8e8;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Mutual Fund Analysis Dashboard</h1>
+
+    <div class="card">
+        <h2>Top Performing Funds</h2>
+        <div class="fund-lists-section">
+            <div class="fund-list">
+                <h3>10-Year Return</h3>
+                <ol id="top10Year"></ol>
+            </div>
+            <div class="fund-list">
+                <h3>5-Year Return</h3>
+                <ol id="top5Year"></ol>
+            </div>
+            <div class="fund-list">
+                <h3>YTD Return</h3>
+                <ol id="topYTD"></ol>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Bottom Performing Funds</h2>
+        <div class="fund-lists-section">
+            <div class="fund-list">
+                <h3>10-Year Return</h3>
+                <ol id="bottom10Year"></ol>
+            </div>
+            <div class="fund-list">
+                <h3>5-Year Return</h3>
+                <ol id="bottom5Year"></ol>
+            </div>
+            <div class="fund-list">
+                <h3>YTD Return</h3>
+                <ol id="bottomYTD"></ol>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Fund Details</h2>
+        <select id="fundSelect"></select>
+        <div id="metrics"></div>
+    </div>
+
+    <div class="card chart-container">
+        <canvas id="priceChart"></canvas>
+    </div>
+
+    <div class="card chart-container">
+        <canvas id="returnChart"></canvas>
+    </div>
+</div>
+
+<script>
+    let priceChart, returnChart;
+
+    // Populate fund lists
+    function populateFundList(listId, data, returnKey) {
+        const list = document.getElementById(listId);
+        if (!data || !Array.isArray(data)) {
+            list.innerHTML = '<li>No data available</li>';
+            return;
+        }
+        data.forEach(fund => {
+            const li = document.createElement('li');
+            const nameSpan = document.createElement('span');
+            const rateSpan = document.createElement('span');
+
+            nameSpan.textContent = fund.fund;
+            nameSpan.className = 'fund-name';
+            nameSpan.onclick = () => {
+                document.getElementById('fundSelect').value = fund.fund;
+                updateCharts(fund.fund);
+                updateMetrics(fund.fund);
+            };
+
+            rateSpan.textContent = `: ${(fund[returnKey] * 100).toFixed(2)}%`;
+            rateSpan.className = 'return-rate';
+
+            li.appendChild(nameSpan);
+            li.appendChild(rateSpan);
+            list.appendChild(li);
+        });
+    }
+
+    // Populate all fund lists
+    function populateAllFundLists() {
+        populateFundList('top10Year', fundData.top10Year, 'ten_year_return');
+        populateFundList('top5Year', fundData.top5Year, 'five_year_return');
+        populateFundList('topYTD', fundData.topYTD, 'ytd_return');
+        populateFundList('bottom10Year', fundData.bottom10Year, 'ten_year_return');
+        populateFundList('bottom5Year', fundData.bottom5Year, 'five_year_return');
+        populateFundList('bottomYTD', fundData.bottomYTD, 'ytd_return');
+    }
+
+    // Populate fund select
+    const select = document.getElementById('fundSelect');
+    fundData.fundList.forEach(fund => {
+        const option = document.createElement('option');
+        option.value = fund;
+        option.textContent = fund;
+        select.appendChild(option);
+    });
+
+    // Update the charts with new data
+    function updateCharts(fund) {
+        const data = fundData.fundData[fund];
+        const ctx1 = document.getElementById('priceChart');
+        const ctx2 = document.getElementById('returnChart');
+
+        // If chart instances exist, destroy them
+        if (priceChart) priceChart.destroy();
+        if (returnChart) returnChart.destroy();
+
+        // Create new chart instances
+        priceChart = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: data.dates,
+                datasets: [{
+                    label: `Price for ${fund}`,
+                    data: data.prices,
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'month'
+                        }
+                    },
+                    y: {
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
+
+        returnChart = new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: data.dates,
+                datasets: [{
+                    label: `Return % for ${fund}`,
+                    data: data.returns.map(r => r * 100),
+                    borderColor: 'rgb(192, 75, 192)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'month'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    // Update metrics display
+    function updateMetrics(fund) {
+        const metrics = fundData.fundMetrics.find(m => m.fund === fund);
+        const metricsDiv = document.getElementById('metrics');
+        metricsDiv.innerHTML = `
+                <p>YTD Return: ${(metrics.ytd_return * 100).toFixed(2)}%</p>
+                <p>5-Year Average Annual Return: ${(metrics.five_year_return * 100).toFixed(2)}%</p>
+                <p>10-Year Average Annual Return: ${(metrics.ten_year_return * 100).toFixed(2)}%</p>
+                <p>Annualized Volatility: ${(metrics.volatility * 100).toFixed(2)}%</p>
+                <p>Average Bid-Ask Spread: ${metrics.avg_spread.toFixed(4)}</p>
+            `;
+    }
+
+    // Event listener for fund selection
+    document.getElementById('fundSelect').addEventListener('change', function(e) {
+        const selectedFund = e.target.value;
+        updateCharts(selectedFund);
+        updateMetrics(selectedFund);
+    });
+
+    // Initial load
+    populateAllFundLists();
+    const initialFund = fundData.fundList[0];
+    updateCharts(initialFund);
+    updateMetrics(initialFund);
+</script>
+</body>
+</html>
