@@ -313,16 +313,16 @@
         metricsDiv.innerHTML = `
                 <p>Current Price: ${metrics.current_price.toFixed(2)}</p>
                 <p>
-                    YTD Return: ${formatReturn(metrics.ytd_return)}
-                    ${formatComparison(metrics.ytd_vs_sp500)}
-                </p>
+                    10-Year Average Annual Return: ${formatReturn(metrics.ten_year_return)}
+                    ${formatComparison(metrics.ten_year_vs_sp500)}
                 <p>
                     5-Year Average Annual Return: ${formatReturn(metrics.five_year_return)}
                     ${formatComparison(metrics.five_year_vs_sp500)}
                 </p>
+                </p>
                 <p>
-                    10-Year Average Annual Return: ${formatReturn(metrics.ten_year_return)}
-                    ${formatComparison(metrics.ten_year_vs_sp500)}
+                    YTD Return: ${formatReturn(metrics.ytd_return)}
+                    ${formatComparison(metrics.ytd_vs_sp500)}
                 </p>
             `;
     }
