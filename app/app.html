@@ -11,13 +11,14 @@
     <style>
         :root {
             --primary-color: #3498db;
-            --secondary-color: #2ecc71;
             --background-color: #f4f4f4;
             --text-color: #333;
             --card-background: #fff;
+            --positive-color: #2ecc71;
+            --negative-color: #e74c3c;
         }
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: sans-serif;
             margin: 0;
             padding: 0;
             background-color: var(--background-color);
@@ -30,7 +31,7 @@
             padding: 20px;
         }
         h1, h2, h3 {
-            color: var(--primary-color);
+            color: var(--text-color);
         }
         .card {
             background-color: var(--card-background);
@@ -45,6 +46,7 @@
             margin-bottom: 20px;
             border-radius: 4px;
             border: 1px solid #ddd;
+            font-family: sans-serif;
         }
         .chart-container {
             margin-bottom: 30px;
@@ -79,7 +81,12 @@
         }
         .fund-list .return-rate {
             font-weight: bold;
-            color: var(--secondary-color);
+        }
+        .positive {
+            color: var(--positive-color);
+        }
+        .negative {
+            color: var(--negative-color);
         }
         #metrics {
             display: grid;
@@ -91,6 +98,7 @@
             padding: 10px;
             background-color: #e8e8e8;
             border-radius: 4px;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -152,6 +160,10 @@
 <script>
     let priceChart, returnChart;
 
+    function getReturnClass(value) {
+        return value >= 0 ? 'positive' : 'negative';
+    }
+
     // Populate fund lists
     function populateFundList(listId, data, returnKey) {
         const list = document.getElementById(listId);
@@ -172,8 +184,9 @@
                 updateMetrics(fund.fund);
             };
 
-            rateSpan.textContent = `: ${(fund[returnKey] * 100).toFixed(2)}%`;
-            rateSpan.className = 'return-rate';
+            const returnValue = fund[returnKey] * 100;
+            rateSpan.textContent = `: ${returnValue.toFixed(2)}%`;
+            rateSpan.className = `return-rate ${getReturnClass(returnValue)}`;
 
             li.appendChild(nameSpan);
             li.appendChild(rateSpan);
@@ -271,14 +284,12 @@
         const metrics = fundData.fundMetrics.find(m => m.fund === fund);
         const metricsDiv = document.getElementById('metrics');
         metricsDiv.innerHTML = `
+                <p>Current Price: ${metrics.current_price.toFixed(2)}</p>
                 <p>YTD Return: ${(metrics.ytd_return * 100).toFixed(2)}%</p>
-                <p>5-Year Average Annual Return: ${(metrics.five_year_return * 100).toFixed(2)}%</p>
-                <p>10-Year Average Annual Return: ${(metrics.ten_year_return * 100).toFixed(2)}%</p>
-                <p>Annualized Volatility: ${(metrics.volatility * 100).toFixed(2)}%</p>
-                <p>Average Bid-Ask Spread: ${metrics.avg_spread.toFixed(4)}</p>
+                <p>5-Year Return: ${(metrics.five_year_return * 100).toFixed(2)}%</p>
+                <p>10-Year Return: ${(metrics.ten_year_return * 100).toFixed(2)}%</p>
             `;
     }
-
     // Event listener for fund selection
     document.getElementById('fundSelect').addEventListener('change', function(e) {
         const selectedFund = e.target.value;

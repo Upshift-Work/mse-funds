@@ -20,9 +20,8 @@ df['Daily Return'] = df.groupby('Name of the open-end investment fund')['Last da
 df['Cumulative Return'] = df.groupby('Name of the open-end investment fund').apply(lambda x: (1 + x['Daily Return']).cumprod() - 1).reset_index(level=0, drop=True)
 
 # Function to calculate average annual return
-def avg_annual_return(returns):
-    total_return = returns.iloc[-1]
-    years = len(returns) / 252  # Assuming 252 trading days per year
+def avg_annual_return(start_price, end_price, years):
+    total_return = (end_price / start_price) - 1
     return (1 + total_return) ** (1 / years) - 1
 
 # Calculate metrics for each fund
@@ -31,33 +30,54 @@ metrics = []
 for fund in df['Name of the open-end investment fund'].unique():
     fund_data = df[df['Name of the open-end investment fund'] == fund]
 
+    current_price = fund_data['Last daily sale price per unit'].iloc[-1]
+
     # YTD return
     ytd_start = datetime(current_date.year, 1, 1)
     ytd_data = fund_data[fund_data['Valuation date'] >= ytd_start]
     if not ytd_data.empty:
         ytd_start_price = ytd_data['Last daily sale price per unit'].iloc[0]
-        ytd_end_price = ytd_data['Last daily sale price per unit'].iloc[-1]
-        ytd_return = (ytd_end_price / ytd_start_price) - 1
+        ytd_return = (current_price / ytd_start_price) - 1
     else:
         ytd_return = np.nan
 
     # 5-year return
     five_year_start = current_date - timedelta(days=5*365)
     five_year_data = fund_data[fund_data['Valuation date'] >= five_year_start]
-    five_year_return = avg_annual_return(five_year_data['Cumulative Return']) if not five_year_data.empty else np.nan
+    if not five_year_data.empty:
+        five_year_start_price = five_year_data['Last daily sale price per unit'].iloc[0]
+        five_year_return = avg_annual_return(five_year_start_price, current_price, 5)
+    else:
+        five_year_return = np.nan
 
     # 10-year return
     ten_year_start = current_date - timedelta(days=10*365)
     ten_year_data = fund_data[fund_data['Valuation date'] >= ten_year_start]
-    ten_year_return = avg_annual_return(ten_year_data['Cumulative Return']) if not ten_year_data.empty else np.nan
+    if not ten_year_data.empty:
+        ten_year_start_price = ten_year_data['Last daily sale price per unit'].iloc[0]
+        ten_year_return = avg_annual_return(ten_year_start_price, current_price, 10)
+    else:
+        ten_year_return = np.nan
+
+    # Calculate Sharpe Ratio (assuming risk-free rate of 2%)
+    risk_free_rate = 0.02
+    excess_returns = fund_data['Daily Return'] - risk_free_rate / 252  # 252 trading days in a year
+    sharpe_ratio = np.sqrt(252) * excess_returns.mean() / excess_returns.std()
+
+    # Calculate maximum drawdown
+    cumulative_returns = (1 + fund_data['Daily Return']).cumprod()
+    peak = cumulative_returns.expanding(min_periods=1).max()
+    drawdown = (cumulative_returns / peak) - 1
+    max_drawdown = drawdown.min()
 
     metrics.append({
         'fund': fund,
+        'current_price': current_price,
         'ytd_return': ytd_return,
         'five_year_return': five_year_return,
         'ten_year_return': ten_year_return,
-        'volatility': fund_data['Daily Return'].std() * np.sqrt(252),
-        'avg_spread': (fund_data['Daily buying price per unit'] - fund_data['Last daily sale price per unit']).mean()
+        'sharpe_ratio': sharpe_ratio,
+        'max_drawdown': max_drawdown
     })
 
 metrics_df = pd.DataFrame(metrics)
