@@ -100,6 +100,16 @@
             border-radius: 4px;
             font-weight: bold;
         }
+        .sp500-info {
+            background-color: #f0f0f0;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .sp500-info span {
+            margin-right: 20px;
+        }
     </style>
 </head>
 <body>
@@ -110,14 +120,17 @@
         <h2>Top Performing Funds</h2>
         <div class="fund-lists-section">
             <div class="fund-list">
+                <h3 id="sp500-10y"></h3>
                 <h3>10-Year Return</h3>
                 <ol id="top10Year"></ol>
             </div>
             <div class="fund-list">
+                <h3 id="sp500-5y"></h3>
                 <h3>5-Year Return</h3>
                 <ol id="top5Year"></ol>
             </div>
             <div class="fund-list">
+                <h3 id="sp500-ytd"></h3>
                 <h3>YTD Return</h3>
                 <ol id="topYTD"></ol>
             </div>
@@ -163,6 +176,20 @@
     function getReturnClass(value) {
         return value >= 0 ? 'positive' : 'negative';
     }
+
+    function formatReturn(value) {
+        return (value * 100).toFixed(2) + '%';
+    }
+
+    function formatComparison(value) {
+        const sign = value >= 0 ? '+' : '';
+        return `(${sign}${formatReturn(value)} vs S&P 500)`;
+    }
+
+    // Display S&P 500 info
+    document.getElementById('sp500-ytd').textContent = `S&P 500 YTD: ${formatReturn(fundData.sp500.ytd_return)}`;
+    document.getElementById('sp500-5y').textContent = `S&P 500 5Y: ${formatReturn(fundData.sp500['5y_return'])}`;
+    document.getElementById('sp500-10y').textContent = `S&P 500 10Y: ${formatReturn(fundData.sp500['10y_return'])}`;
 
     // Populate fund lists
     function populateFundList(listId, data, returnKey) {
@@ -285,11 +312,21 @@
         const metricsDiv = document.getElementById('metrics');
         metricsDiv.innerHTML = `
                 <p>Current Price: ${metrics.current_price.toFixed(2)}</p>
-                <p>YTD Return: ${(metrics.ytd_return * 100).toFixed(2)}%</p>
-                <p>5-Year Return: ${(metrics.five_year_return * 100).toFixed(2)}%</p>
-                <p>10-Year Return: ${(metrics.ten_year_return * 100).toFixed(2)}%</p>
+                <p>
+                    YTD Return: ${formatReturn(metrics.ytd_return)}
+                    ${formatComparison(metrics.ytd_vs_sp500)}
+                </p>
+                <p>
+                    5-Year Average Annual Return: ${formatReturn(metrics.five_year_return)}
+                    ${formatComparison(metrics.five_year_vs_sp500)}
+                </p>
+                <p>
+                    10-Year Average Annual Return: ${formatReturn(metrics.ten_year_return)}
+                    ${formatComparison(metrics.ten_year_vs_sp500)}
+                </p>
             `;
     }
+
     // Event listener for fund selection
     document.getElementById('fundSelect').addEventListener('change', function(e) {
         const selectedFund = e.target.value;

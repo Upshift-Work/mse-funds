@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import json
 from datetime import datetime, timedelta
+import yfinance as yf
 
 # Load the data
 df = pd.read_csv('combined_mutual_fund_data.csv', sep='\t')
@@ -24,8 +25,22 @@ def avg_annual_return(start_price, end_price, years):
     total_return = (end_price / start_price) - 1
     return (1 + total_return) ** (1 / years) - 1
 
-# Calculate metrics for each fund
+# Get S&P 500 data
+sp500 = yf.Ticker("^GSPC")
+sp500_data = sp500.history(period="10y")
+
+# Calculate S&P 500 returns
 current_date = df['Valuation date'].max()
+sp500_current_price = sp500_data['Close'].iloc[-1]
+sp500_ytd_start_price = sp500_data.loc[sp500_data.index.year == current_date.year, 'Open'].iloc[0]
+sp500_5y_start_price = sp500_data.loc[sp500_data.index.year == current_date.year - 5, 'Open'].iloc[0]
+sp500_10y_start_price = sp500_data.loc[sp500_data.index.year == current_date.year - 10, 'Open'].iloc[0]
+
+sp500_ytd_return = (sp500_current_price / sp500_ytd_start_price) - 1
+sp500_5y_return = avg_annual_return(sp500_5y_start_price, sp500_current_price, 5)
+sp500_10y_return = avg_annual_return(sp500_10y_start_price, sp500_current_price, 10)
+
+# Calculate metrics for each fund
 metrics = []
 for fund in df['Name of the open-end investment fund'].unique():
     fund_data = df[df['Name of the open-end investment fund'] == fund]
@@ -77,7 +92,10 @@ for fund in df['Name of the open-end investment fund'].unique():
         'five_year_return': five_year_return,
         'ten_year_return': ten_year_return,
         'sharpe_ratio': sharpe_ratio,
-        'max_drawdown': max_drawdown
+        'max_drawdown': max_drawdown,
+        'ytd_vs_sp500': ytd_return - sp500_ytd_return,
+        'five_year_vs_sp500': five_year_return - sp500_5y_return,
+        'ten_year_vs_sp500': ten_year_return - sp500_10y_return
     })
 
 metrics_df = pd.DataFrame(metrics)
@@ -100,7 +118,12 @@ js_data = {
     'topYTD': top_ytd.to_dict('records'),
     'bottom5Year': bottom_5_year.to_dict('records'),
     'bottom10Year': bottom_10_year.to_dict('records'),
-    'bottomYTD': bottom_ytd.to_dict('records')
+    'bottomYTD': bottom_ytd.to_dict('records'),
+    'sp500': {
+        'ytd_return': sp500_ytd_return,
+        '5y_return': sp500_5y_return,
+        '10y_return': sp500_10y_return
+    }
 }
 
 for fund in js_data['fundList']:
